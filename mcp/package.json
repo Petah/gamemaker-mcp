@@ -1,0 +1,31 @@
+{
+  "name": "gamemaker-docs-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for GameMaker Language documentation lookup",
+  "main": "gamemaker-docs-server.js",
+  "bin": {
+    "gamemaker-docs-server": "./gamemaker-docs-server.js"
+  },
+  "scripts": {
+    "start": "node gamemaker-docs-server.js",
+    "dev": "node gamemaker-docs-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "gamemaker",
+    "documentation",
+    "gml",
+    "lookup"
+  ],
+  "author": "",
+  "license": "MIT",
+  "files": [
+    "gamemaker-docs-server.js"
+  ]
+}

@@ -1,0 +1,351 @@
+# GameMaker Language (GML) Coding Agent Guide
+#
+# GETTING STARTED AS A GAMEMAKER AGENT
+# =====================================
+# This guide provides everything you need to write effective GameMaker Language (GML) code.
+# If you're helping with GameMaker development, this is your comprehensive reference.
+#
+# PURPOSE: Code-first orientation for LLM agents writing GML for GameMaker projects.
+# FOCUS: Correct syntax, idiomatic patterns, safe resource handling, predictable behavior.
+#
+# RECOMMENDED WORKFLOW:
+# 1. Call init_gamemaker_agent (this tool) to get this guide
+# 2. Use lookup_gamemaker_function for specific functions you're unsure about
+# 3. Use search_gamemaker_docs for broader concepts or when exploring
+# 4. Use get_markdown_file for detailed reference documentation
+# 5. Write clean, defensive GML code following the patterns below
+
+========================================
+SCOPE & ASSUMPTIONS
+========================================
+- Target: GameMaker "GML Code" (not GML Visual). Use functions and events; prefer code over editor screenshots.
+- Audience: autonomous/code-assist agents. Output must be copy/pasteable into GameMaker.
+- Project context: assets (sprites/objects/rooms) may already exist; if not, show minimal scaffolding.
+- Platform: defaults to desktop runner; avoid platform-specific APIs unless requested.
+- Tone: concise, explicit, and defensive. When in doubt, bracket expressions; avoid ambiguous syntax.
+
+========================================
+LANGUAGE ESSENTIALS (GML)
+========================================
+- Variables & scope:
+  - Five identifier/scope kinds: global, constant (enums/macros), instance, static (per-function), local.
+  - Default scope in Object Events is *instance*. Use `var` for locals; `static` for per-function memory; `global.` for shared.
+  - Use dotted scope access (`a.b`) and `with(target) { ... }` to run code in another instance/struct.
+- Naming rules: start with letter or `_`, alnum+underscore only, ≤64 chars.
+- Assignment: `=` (or `:=`). **No chained assignment** (`a = b = c = 4` is invalid). Use separate lines.
+- Operators (common):
+  - Logic: `&& || ^^ !`
+  - Compare: `< <= == != >= >`
+  - Math: `+ - * / div mod %`
+  - Bitwise: `| & ^ << >> ~`
+  - Inc/dec: `++ --` (be explicit with parentheses)
+  - Nullish: `??` and `??=` treat `undefined` / `pointer_null` as nullish.
+- Functions & methods:
+  - Script function (global): `function name(...) { ... }` (good for libraries). Executed in the caller’s scope.
+  - Method variable (bound): `name = function(...) { ... }` (define inside objects/structs so `self` is the instance/struct).
+  - Prefer *methods* for object-local behavior; prefer *script functions* for utilities.
+  - Optional parameters: `function f(a, b = 0) { ... }` (skipped args become `undefined` or default expr).
+- Arrays & structs:
+  - Array literals: `[]`, multidim: `a[0][1]` or `a[0, 1]` (2D only). Default behavior passes arrays by reference (copy-on-write is deprecated).
+  - Struct literals: `{ x: 0, y: 0, move: function() { ... } }` (right-hand side is evaluated in defining scope).
+  - Constructors: `function Thing(...) constructor { ... }` then `new Thing(...)` (single inheritance supported via `function Child(...) : Parent(...) constructor {}`).
+- Instance keywords: `self`, `other`, `all`, `noone`. Avoid relying on legacy numeric values (-1..-4).
+
+========================================
+EVENTS & LIFECYCLE (WRITE CODE TO THESE)
+========================================
+- Core loop events you will use most: Create → (Begin Step →) Step (→ End Step) → Draw (and Pre/Post-Draw) → Destroy/Clean Up.
+- Create: initialize instance variables, bind methods, start timers.
+- Step: input, movement, AI. Use alarms or time sources for delayed actions.
+- Draw: if you add a Draw event, you **must** draw everything you want (use `draw_self()` plus extras); otherwise default sprite drawing occurs.
+- Collision: runs after collision resolution is computed for the step; use for responses. (Physics has separate rules.)
+- Destroy then Clean Up: free dynamic resources (ds_*, surfaces, buffers, etc.).
+
+========================================
+SAFE DEFAULTS & STYLE (Official Best Practices)
+========================================
+- **Consistency**: Be consistent in your programming style across the entire project.
+- **Formatting**: Use 4-space indents and clear, readable formatting.
+- **Organization**: Use `#region` and `#endregion` tags to organize code sections.
+- **Comments**: Add comments liberally (they get stripped during compilation, so no performance cost).
+- **Variables**: Use local variables (`var`) to improve code readability and scope clarity.
+- **Expressions**: Break complex one-line expressions into multiple lines for readability.
+- **Bracket complex expressions**: Different runners can evaluate order differently if ambiguous.
+- **Naming**: Prefer lower_snake_case for variables; prefix assets: `obj_`, `spr_`, `snd_`, `rm_`, `scr_`, `sh_`, etc.
+- **Constants**: Use `enum` for constant sets; use `#macro` sparingly for literals.
+- **Documentation**: Document functions with JSDoc-style comments:
+  /// @function foo(a,b)  /// @param {real} a  /// @param {real} b  /// @return {real}
+- **Resource cleanup**: Always destroy dynamic resources (ds_*, surfaces, buffers, async handles) in Clean Up/Destroy.
+- **Data structures**: Prefer arrays/structs over DS lists/maps when possible (garbage collected automatically).
+  Exception: Use DS Maps for fast key-value lookups when performance is critical.
+
+========================================
+COMMON BUILT-IN INSTANCE VARIABLES
+========================================
+movement: x, y, xprevious, yprevious, direction, speed, hspeed, vspeed, friction, gravity, gravity_direction
+sprite/draw: sprite_index, image_index, image_number, image_speed, image_angle, image_xscale, image_yscale, image_alpha, image_blend
+general: id, visible, solid, persistent, depth, layer, alarm[12]
+mask/bbox: mask_index, bbox_left, bbox_right, bbox_top, bbox_bottom
+object ref: object_index
+
+========================================
+INPUT (CROSS-PLATFORM BASICS)
+========================================
+keyboard: `keyboard_check(vk_left)`, `keyboard_check_pressed(vk_space)`, etc.
+mouse: `mouse_x`, `mouse_y`, `mouse_check_button_pressed(mb_left)`
+gamepad/touch: use GamePad/Device/Gesture APIs when needed.
+
+========================================
+MOVEMENT & COLLISIONS (NON-PHYSICS)
+========================================
+- Move by velocity: set `direction`/`speed`, or set `x/y` directly.
+- Helpers: `motion_add`, `motion_set`, `move_towards_point`, grid snapping `move_snap`/`place_snapped`.
+- Collision queries:
+  - Simple: `place_meeting(x+dx, y+dy, obj)`; get colliding id with `instance_place`.
+  - Areas/lines: `collision_rectangle/line/circle/...` (returns id or count/list variants).
+  - Multiple targets: parent object or pass `[obj_a, obj_b, tilemap_id]` array.
+- Tilemap collisions: obtain tilemap id with `layer_tilemap_get_id("LayerName")` and pass to collision functions.
+- Use `noone` checks rather than boolean on functions that might return `0` (e.g., tilemap id 0).
+
+========================================
+TIME: ALARMS & TIME SOURCES
+========================================
+- Alarms: `alarm[0] = steps;` → Alarm 0 event fires when it hits 0 (set to 1 to trigger next step).
+- Time Sources (modern timers):
+  - Quick one-shot: `call_later(seconds, method_ref)` and cancel with `call_cancel(handle)`.
+  - Full control: create/start with `time_source_create(...)` + `time_source_start(...)` and destroy when done.
+
+========================================
+DATA STRUCTURES & MEMORY
+========================================
+- Prefer arrays/structs; when using DS types: `ds_list_create()` / `ds_list_destroy(list)`, same for map/grid/stack/queue/priority.
+- Arrays/structs are garbage collected when unreferenced; dynamic resources (ds_*, surfaces, buffers, particles, etc.) are **not** — you must destroy them.
+- Weak refs exist for structs if you need liveness checks.
+
+========================================
+PERFORMANCE BEST PRACTICES (Official Guidelines)
+========================================
+- **Don't optimize prematurely**: If your game runs well, readability > micro-optimizations.
+- **Memory allocation**: Pre-allocate array memory to full size when possible.
+- **Collision detection**: Use `place_meeting` over `collision_*` functions (faster).
+- **Timing optimization**: Use alarms instead of Step events for less frequent code execution.
+- **Drawing efficiency**:
+  - Group sprites/textures efficiently on texture pages to minimize swaps.
+  - Batch draw similar objects together to reduce vertex batches.
+  - Avoid breaking GPU vertex batches with frequent blend mode changes.
+  - Don't put non-drawing code in Draw events.
+- **Data access**: Use DS Maps for fast key-value data storage when performance matters.
+- **Trigonometry**: Trig functions (sin, cos, etc.) are faster than expected - use them freely.
+- **Surfaces**: Disable depth buffers for 2D surfaces to save memory.
+- **Tile-based collision**: Consider tile-based collision systems for complex level geometry.
+
+========================================
+DEBUGGING
+========================================
+- Print to output: `show_debug_message(...)` (and `_ext`).
+- Break/fail fast appropriately: `assert`, `show_error`, and the in-game Debug Overlay can be used while developing.
+- Built-in macros: `_GMLINE_`, `_GMFILE_`, `_GMFUNCTION_` are handy in logs.
+
+========================================
+TEMPLATES & SNIPPETS
+========================================
+
+-- Object: obj_player (Create) --
+/// @desc Initialize player
+hp = 100;
+move_speed = 3;
+dir = 0;
+invuln = false;
+
+// Bind instance methods (keep object-local behavior override-able)
+move_vector = function(h, v) {
+    if (h == 0 && v == 0) { speed = 0; exit; }
+    dir = point_direction(0, 0, h, v);
+    speed = move_speed;
+};
+
+take_damage = function(amount) {
+    if (invuln) exit;
+    hp = max(0, hp - amount);
+    invuln = true;
+    // Temporary invulnerability using a simple timer
+    call_later(0.5, function(){ invuln = false; });
+};
+
+// Optional: store a reference to the controller if needed
+// controller = instance_find(obj_controller, 0);
+
+-- Object: obj_player (Step) --
+var h = keyboard_check(vk_right) - keyboard_check(vk_left);
+var v = keyboard_check(vk_down) - keyboard_check(vk_up);
+
+move_vector(h, v);
+
+// Integrate velocity via built-in direction/speed
+x += lengthdir_x(speed, dir);
+y += lengthdir_y(speed, dir);
+
+// Simple collision with walls: rollback to previous safe position
+if (place_meeting(x, y, obj_wall)) {
+    x = xprevious;
+    y = yprevious;
+    speed = 0;
+}
+
+-- Object: obj_player (Draw) --
+draw_self();
+draw_text(x, y - 16, "HP: " + string(hp));
+
+-- Spawning utility (script) --
+/// @function spawn_at(obj, layer_name, xx, yy)
+/// @param {Asset.GMObject} obj
+/// @param {string} layer_name
+/// @param {real} xx
+/// @param {real} yy
+/// @return {Id.Instance}
+function spawn_at(obj, layer_name, xx, yy) {
+    var inst = instance_create_layer(xx, yy, layer_name, obj);
+    return inst;
+}
+
+-- Struct + constructor example --
+function Bullet(_spd = 8, _dmg = 1) constructor {
+    spd = _spd;
+    dmg = _dmg;
+    update = function(inst) {
+        inst.x += lengthdir_x(spd, inst.direction);
+        inst.y += lengthdir_y(spd, inst.direction);
+    }
+}
+// Usage in an object:
+bullet_data = new Bullet(10, 2);
+
+-- Arrays pass-by-reference example --
+function triple_first3(arr) {
+    // Modifies caller's array directly
+    arr[0] *= 3; arr[1] *= 3; arr[2] *= 3;
+}
+
+-- Collision with multiple objects or tilemap --
+var blockers = [obj_wall, obj_crate]; // or include a tilemap id: layer_tilemap_get_id("Collisions")
+if (!place_meeting(x + 4, y, blockers)) x += 4;
+
+-- Time Source quick timer --
+call_later(1.0, function(){ visible = !visible; });
+
+-- Defensive DS usage --
+list = ds_list_create();
+ds_list_add(list, "a");
+/// ...use list...
+ds_list_destroy(list); list = undefined;
+
+========================================
+CHECKLIST FOR AGENTS (BEFORE YOU SUBMIT CODE)
+========================================
+[ ] Use instance-bound methods inside objects; use script functions for utilities/libraries.
+[ ] Initialize all instance variables in Create (not lazily in Step) to avoid undefined reads.
+[ ] Use alarms or time sources; avoid ad-hoc counters spread across events.
+[ ] When you add a Draw event, call `draw_self()` unless you intentionally override the sprite.
+[ ] For collisions, prefer queries (`place_meeting`, `instance_place`) and rollbacks; keep physics off unless requested.
+[ ] Destroy dynamic resources in Destroy/Clean Up. Leave arrays/structs to the GC when unreferenced.
+[ ] Bracket complex expressions; avoid chaining or relying on precedence.
+[ ] Add JSDoc headers for any function the user will call; give precise types & descriptions.
+[ ] Provide layer names as strings to instance creation APIs; ensure they exist.
+[ ] Avoid deprecated functions (e.g., old `instance_create`); prefer `instance_create_layer`/`_depth`.
+[ ] Keep code deterministic; avoid polling undefined variables; check for `noone` from collision/lookup calls.
+[ ] If you reference other instances in Create, be aware of creation order; guard with existence checks.
+
+========================================
+GAMEMAKER DOCUMENTATION ACCESS (MCP TOOLS)
+========================================
+You have access to comprehensive GameMaker documentation through these MCP tools.
+Use them frequently to ensure accurate, up-to-date information.
+
+## Core Documentation Tools:
+
+### `lookup_gamemaker_function`
+- **Use for**: Getting complete documentation for any GML function
+- **Input**: function_name (string), include_examples (optional boolean)
+- **Example**: lookup_gamemaker_function("draw_sprite")
+- **Returns**: Full documentation with syntax, parameters, examples, and related files
+
+### `search_gamemaker_docs`
+- **Use for**: Finding information about concepts, features, or when you're not sure of exact function names
+- **Input**: query (string), max_results (optional number, default 5)
+- **Example**: search_gamemaker_docs("collision detection")
+- **Returns**: Ranked search results with relevant documentation sections
+
+### `list_functions_by_category`
+- **Use for**: Exploring what functions are available in a specific area
+- **Input**: category (string like "Drawing", "Audio", "Movement")
+- **Example**: list_functions_by_category("Drawing")
+- **Returns**: All functions in that category with their types
+
+### `get_markdown_file`
+- **Use for**: Getting complete documentation files for comprehensive topics
+- **Input**: file_path (string using root-relative path format)
+- **Example**: get_markdown_file("GameMaker_Language/GML_Overview/Arrays.md")
+- **Returns**: Complete markdown documentation file
+
+### `init_gamemaker_agent`
+- **Use for**: Getting this complete guide (you already called this!)
+- **Input**: none
+- **Returns**: This comprehensive GML coding guide
+
+## Documentation Path Format:
+All paths use clean root-relative format like:
+`GameMaker_Language/GML_Reference/Drawing/Sprites_And_Tiles/draw_sprite.md`
+
+Links in documentation are automatically converted to this format for easy navigation.
+
+========================================
+REFERENCES (use MCP get_markdown_file tool)
+========================================
+Use the `get_markdown_file` MCP tool with these paths when you need detailed reference information:
+
+- GML Code Overview: `GameMaker_Language/GML_Overview/GML_Overview.md`
+- Variables & Scope: `GameMaker_Language/GML_Overview/Variables_And_Variable_Scope.md`
+- Script Functions & Methods: `GameMaker_Language/GML_Overview/Script_Functions.md`
+- Method Variables & Binding: `GameMaker_Language/GML_Overview/Method_Variables.md`
+- Script vs Methods: `GameMaker_Language/GML_Overview/Script_Functions_vs_Methods.md`
+- Arrays (incl. copy-on-write): `GameMaker_Language/GML_Overview/Arrays.md`
+- Structs & Constructors: `GameMaker_Language/GML_Overview/Structs.md`
+- Instance Keywords: `GameMaker_Language/GML_Overview/Instance_Keywords.md`
+- Expressions & Operators: `GameMaker_Language/GML_Overview/Expressions_And_Operators.md`
+- Object Events & lifecycle: `The_Asset_Editors/Object_Properties/Object_Events.md`
+- Built-in Instance Variables: `GameMaker_Language/GML_Reference/Asset_Management/Instances/Instance_Variables/Instance_Variables.md`
+- Movement & Collisions: `GameMaker_Language/GML_Reference/Movement_And_Collisions/Movement_And_Collisions.md`
+- Collisions (details & tilemaps): `GameMaker_Language/GML_Reference/Movement_And_Collisions/Collisions/Collisions.md`
+- Time Sources & call_later: `GameMaker_Language/GML_Reference/Time_Sources/Time_Sources.md`
+- Data Structures: `GameMaker_Language/GML_Reference/Data_Structures/Data_Structures.md`
+- Drawing & Application Surface: `GameMaker_Language/GML_Reference/Drawing/Drawing.md`
+- General Game Control: `GameMaker_Language/GML_Reference/General_Game_Control/General_Game_Control.md`
+- Garbage Collection & weak refs: `GameMaker_Language/GML_Reference/Garbage_Collection/Garbage_Collection.md`
+
+========================================
+NEXT STEPS FOR GAMEMAKER DEVELOPMENT
+========================================
+Now that you have this guide, here's how to proceed with GameMaker development:
+
+## For New GameMaker Projects:
+1. **Understand the request**: What type of game/feature is being built?
+2. **Look up unfamiliar functions**: Use `lookup_gamemaker_function` for any GML functions you're unsure about
+3. **Search for concepts**: Use `search_gamemaker_docs` for broader topics like "physics", "networking", etc.
+4. **Follow the patterns**: Use the code templates and best practices from this guide
+5. **Write defensive code**: Always check for `noone`, bracket complex expressions, destroy resources
+
+## For Specific Development Tasks:
+- **Movement/Collision**: Reference Movement_And_Collisions.md, use `place_meeting` for collision detection
+- **Drawing/Graphics**: Look up drawing functions, remember to call `draw_self()` in Draw events
+- **Data Management**: Use arrays/structs when possible, destroy DS structures when done
+- **Timing**: Use alarms or time sources instead of ad-hoc counters
+- **Input**: Use `keyboard_check`, `mouse_check_button`, etc.
+
+## When You Need More Information:
+- Use `get_markdown_file` with the reference paths above for comprehensive topics
+- Use `search_gamemaker_docs` when exploring new areas
+- Always verify function signatures with `lookup_gamemaker_function`
+
+Remember: Write code that's copy/pasteable into GameMaker, follows GML syntax exactly, and handles edge cases defensively.
+
+-- end --
