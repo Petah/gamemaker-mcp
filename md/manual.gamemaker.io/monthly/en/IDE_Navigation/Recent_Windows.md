@@ -1,0 +1,9 @@
+---
+title: "Recent Windows"
+source: "manual.gamemaker.io/monthly/en/IDE_Navigation/Recent_Windows.htm"
+converted: "2025-09-14T04:00:12.304Z"
+---
+
+# Recent Windows
+
+![Recent Windows Window](../assets/Images/IDE_Input/Recent_Windows.png)The **Recent Windows** list can be opened from the [Windows](Menus/The_Windows_Menu.md) menu, and will show a short list (by default it has a maximum of 10 items) of the windows you have previously opened. To start with this list will be blank, but as you open different windows in the IDE (like a sprite or a script or an object, etc.) the list will be populated. Should you need to go back to any of these previously opened windows then you simply click the left mouse button ![LMB Icon](../assets/Images/Icons/Icon_LMB.png) on the item in the list and the workspace will pan to the window. If you click the right mouse button ![RMB Icon](../assets/Images/Icons/Icon_RMB.png) on an item, then you will open the following menu: ![Recent Windows RMB Menu](../assets/Images/IDE_Input/Recent_Windows_RMB_Menu.png)Here you can choose to delete an item (or items, as you can use ![SHIFT Icon](../assets/Images/Icons/Icon_Shift.png) + ![LMB Icon](../assets/Images/Icons/Icon_LMB.png) or ![CONTROL Icon](../assets/Images/Icons/Icon_Ctrl.png)/ ![CMD Icon](../assets/Images/Icons/Icon_Cmd.png) + ![LMB Icon](../assets/Images/Icons/Icon_LMB.png) to select multiple) from the list or you can have them moved to the top of the list. The RMB menu also has an additional option permitting you to clear the list completely. It's worth noting that the Recent Windows list can be docked to the sides of the IDE and you can also adjust certain [Preferences](../Setting_Up_And_Version_Information/IDE_Preferences/General/Recent_Windows.md) to change how it behaves.
