@@ -13,7 +13,7 @@ A comprehensive toolkit for GameMaker Language (GML) documentation management, f
 
 ## Requirements
 
-- **Node.js**: >= 24.0.0
+- **Node.js**: >= 22.0.0
 - **npm**: Latest version recommended
 
 ## Installation
@@ -353,9 +353,3 @@ MIT License - see LICENSE file for details.
 2. Create a feature branch
 3. Make your changes following the existing code style
 4. Submit a pull request
-
-## Issues & Support
-
-Report issues at: [GitHub Issues](https://github.com/anthropics/claude-code/issues)
-
-For help with using Claude Code: `/help`

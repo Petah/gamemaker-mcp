@@ -1,11 +1,9 @@
 {
   "name": "@petah/gamemaker-mcp",
-  "version": "1.0.10",
+  "version": "1.0.12",
   "description": "GameMaker Language documentation tools with MCP server and CLI - search, lookup, and convert GameMaker documentation",
   "type": "module",
-  "bin": {
-    "gamemaker-mcp": "./src/gamemaker-docs-server.js"
-  },
+  "bin": "./src/gamemaker-docs-server.js",
   "publishConfig": {
     "access": "public"
   },
