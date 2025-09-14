@@ -137,4 +137,4 @@ class GameMakerLookupCLI {
     }
 }
 
-module.exports = GameMakerLookupCLI;
+export default GameMakerLookupCLI;

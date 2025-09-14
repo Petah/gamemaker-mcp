@@ -1,4 +1,4 @@
-const BaseCommand = require('./base-command.js');
+import BaseCommand from './base-command.js';
 
 class SearchCommand extends BaseCommand {
     static register(program) {
@@ -20,4 +20,4 @@ class SearchCommand extends BaseCommand {
     }
 }
 
-module.exports = SearchCommand;
+export default SearchCommand;

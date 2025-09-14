@@ -2,6 +2,7 @@
   "name": "gamemaker-docs-tools",
   "version": "1.0.0",
   "description": "GameMaker Language documentation tools with MCP server and CLI",
+  "type": "module",
   "main": "src/gamemaker-docs-server.js",
   "bin": {
     "gamemaker-docs-server": "./src/gamemaker-docs-server.js",
@@ -10,6 +11,7 @@
   "scripts": {
     "mcp": "node src/gamemaker-docs-server.js",
     "cli": "node src/cli.js",
+    "cli:dev": "node --watch src/cli.js",
     "convert": "node src/cli.js convert"
   },
   "dependencies": {

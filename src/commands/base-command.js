@@ -1,22 +1,22 @@
-const fs = require('fs').promises;
-const DocsIndexer = require('../lib/docs-indexer.js');
-const GameMakerLookupCLI = require('../lib/gamemaker-cli.js');
+import { access } from 'node:fs/promises';
+import DocsIndexer from '../lib/docs-indexer.js';
+import GameMakerLookupCLI from '../lib/gamemaker-cli.js';
+import { ErrorHandler, ValidationError, PerformanceMonitor } from '../lib/errors.js';
 
 class BaseCommand {
     async validateDocsPath(docsPath) {
-        try {
-            await fs.access(docsPath);
-        } catch (error) {
-            console.error(`Error: Documentation path "${docsPath}" does not exist or is not accessible.`);
-            process.exit(1);
-        }
+        await ErrorHandler.wrapAsync(async () => {
+            await access(docsPath);
+        }, { operation: 'validateDocsPath', path: docsPath });
     }
 
     async initializeCLI(docsPath) {
-        const docsIndexer = new DocsIndexer(docsPath);
-        await docsIndexer.buildIndex();
-        return new GameMakerLookupCLI(docsIndexer);
+        return await PerformanceMonitor.measure('initializeCLI', async () => {
+            const docsIndexer = new DocsIndexer(docsPath);
+            await docsIndexer.buildIndex();
+            return new GameMakerLookupCLI(docsIndexer);
+        });
     }
 }
 
-module.exports = BaseCommand;
+export default BaseCommand;

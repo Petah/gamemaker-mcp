@@ -1,12 +1,12 @@
-const LookupCommand = require('./lookup.js');
-const SearchCommand = require('./search.js');
-const ListCommand = require('./list.js');
-const CategoriesCommand = require('./categories.js');
-const CategoryCommand = require('./category.js');
-const FileCommand = require('./file.js');
-const ConvertCommand = require('./convert.js');
+import LookupCommand from './lookup.js';
+import SearchCommand from './search.js';
+import ListCommand from './list.js';
+import CategoriesCommand from './categories.js';
+import CategoryCommand from './category.js';
+import FileCommand from './file.js';
+import ConvertCommand from './convert.js';
 
-function registerAllCommands(program) {
+export function registerAllCommands(program) {
     LookupCommand.register(program);
     SearchCommand.register(program);
     ListCommand.register(program);
@@ -16,8 +16,7 @@ function registerAllCommands(program) {
     ConvertCommand.register(program);
 }
 
-module.exports = {
-    registerAllCommands,
+export {
     LookupCommand,
     SearchCommand,
     ListCommand,

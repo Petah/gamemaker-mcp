@@ -1,5 +1,5 @@
-const fs = require('fs').promises;
-const path = require('path');
+import { readFile, readdir } from 'node:fs/promises';
+import { join, relative, basename, sep, isAbsolute, dirname, resolve } from 'node:path';
 
 class DocsIndexer {
     constructor(docsPath) {
@@ -17,7 +17,7 @@ class DocsIndexer {
 
             for (const filePath of files) {
                 try {
-                    const content = await fs.readFile(filePath, 'utf-8');
+                    const content = await readFile(filePath, 'utf-8');
                     this.fileContent.set(filePath, content);
 
                     const functions = this.extractFunctions(content, filePath);
@@ -45,10 +45,10 @@ class DocsIndexer {
         const files = [];
 
         try {
-            const entries = await fs.readdir(dir, { withFileTypes: true });
+            const entries = await readdir(dir, { withFileTypes: true });
 
             for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
+                const fullPath = join(dir, entry.name);
 
                 if (entry.isDirectory()) {
                     const subFiles = await this.findMarkdownFiles(fullPath);
@@ -157,7 +157,7 @@ class DocsIndexer {
     }
 
     getFileCategory(filePath) {
-        const pathParts = filePath.split(path.sep);
+        const pathParts = filePath.split(sep);
 
         // Find the index where the meaningful path starts (after manual.gamemaker.io/monthly/en/)
         let startIndex = -1;
@@ -353,7 +353,7 @@ class DocsIndexer {
             // Only include results that match at least half the query words
             if (matchCount >= Math.ceil(queryWords.length / 2)) {
                 const relevantSection = this.extractRelevantSection(content, query);
-                const fileName = path.basename(filePath, '.md');
+                const fileName = basename(filePath, '.md');
                 const category = this.getFileCategory(filePath);
 
                 results.push({
@@ -482,10 +482,10 @@ class DocsIndexer {
         let targetPath = filePath;
 
         // If it's a root-relative path (starts with GameMaker_Language etc), resolve it
-        if (!path.isAbsolute(targetPath) && !targetPath.includes('manual.gamemaker.io')) {
-            targetPath = path.join(this.docsPath, 'manual.gamemaker.io/monthly/en', targetPath);
-        } else if (!path.isAbsolute(targetPath)) {
-            targetPath = path.join(this.docsPath, targetPath);
+        if (!isAbsolute(targetPath) && !targetPath.includes('manual.gamemaker.io')) {
+            targetPath = join(this.docsPath, 'manual.gamemaker.io/monthly/en', targetPath);
+        } else if (!isAbsolute(targetPath)) {
+            targetPath = join(this.docsPath, targetPath);
         }
 
         // Ensure .md extension
@@ -522,8 +522,8 @@ class DocsIndexer {
             }
 
             // Resolve the relative path from the current file
-            const currentDir = path.dirname(currentFilePath);
-            const resolvedPath = path.resolve(currentDir, linkPath);
+            const currentDir = dirname(currentFilePath);
+            const resolvedPath = resolve(currentDir, linkPath);
             const rootRelativePath = this.convertToRootRelative(resolvedPath);
 
             return `[${linkText}](${rootRelativePath})`;
@@ -532,10 +532,10 @@ class DocsIndexer {
 
     async findSimilarFiles(searchPath) {
         const suggestions = [];
-        const searchName = path.basename(searchPath, '.md').toLowerCase();
+        const searchName = basename(searchPath, '.md').toLowerCase();
 
         for (const [filePath] of this.fileContent) {
-            const fileName = path.basename(filePath, '.md').toLowerCase();
+            const fileName = basename(filePath, '.md').toLowerCase();
             if (fileName.includes(searchName) || searchName.includes(fileName)) {
                 const rootRelativePath = this.convertToRootRelative(filePath);
                 suggestions.push(rootRelativePath);
@@ -546,7 +546,7 @@ class DocsIndexer {
     }
 
     convertToRootRelative(filePath) {
-        const pathParts = filePath.split(path.sep);
+        const pathParts = filePath.split(sep);
 
         // Find the index where the meaningful path starts (after manual.gamemaker.io/monthly/en/)
         let startIndex = -1;
@@ -561,7 +561,7 @@ class DocsIndexer {
 
         if (startIndex === -1) {
             // Fallback: return relative to docs path
-            return path.relative(this.docsPath, filePath).replace(/\\/g, '/');
+            return relative(this.docsPath, filePath).replace(/\\/g, '/');
         }
 
         const meaningfulParts = pathParts.slice(startIndex);
@@ -569,4 +569,4 @@ class DocsIndexer {
     }
 }
 
-module.exports = DocsIndexer;
+export default DocsIndexer;

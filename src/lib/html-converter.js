@@ -1,7 +1,8 @@
-const fs = require('fs').promises;
-const path = require('path');
-const { JSDOM } = require('jsdom');
-const TurndownService = require('turndown');
+import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
+import { join, dirname, basename, relative } from 'node:path';
+import { JSDOM } from 'jsdom';
+import TurndownService from 'turndown';
+import { ErrorHandler, ConversionError, PerformanceMonitor } from './errors.js';
 
 class HTMLToMarkdownConverter {
     constructor(inputDir, outputDir) {
@@ -88,9 +89,9 @@ class HTMLToMarkdownConverter {
 
             // If we have the current file path, calculate relative path
             if (this.currentFilePath) {
-                const currentDir = path.dirname(this.currentFilePath.replace(/\.html?$/, '.md'));
-                const relativePath = path.relative(currentDir, targetPath);
-                return relativePath.replace(/\\/g, '/'); // Ensure forward slashes
+                const currentDir = dirname(this.currentFilePath.replace(/\.html?$/, '.md'));
+                const relPath = relative(currentDir, targetPath);
+                return relPath.replace(/\\/g, '/'); // Ensure forward slashes
             }
 
             // Fallback to direct path
@@ -146,7 +147,7 @@ class HTMLToMarkdownConverter {
             // Store current file path for relative link calculation
             this.currentFilePath = relativePath;
 
-            const htmlContent = await fs.readFile(filePath, 'utf-8');
+            const htmlContent = await readFile(filePath, 'utf-8');
             const dom = new JSDOM(htmlContent);
             const document = dom.window.document;
 
@@ -178,7 +179,7 @@ class HTMLToMarkdownConverter {
 
             // Add front matter with metadata
             const title = document.querySelector('title')?.textContent ||
-                         path.basename(relativePath, '.html');
+                         basename(relativePath, '.html');
 
             const frontMatter = `---
 title: "${title.replace(/"/g, '\\"')}"
@@ -191,21 +192,31 @@ converted: "${new Date().toISOString()}"
             markdown = frontMatter + markdown;
 
             // Determine output path
-            const outputPath = path.join(
+            const outputPath = join(
                 this.outputDir,
                 relativePath.replace(/\.html?$/i, '.md')
             );
 
             // Ensure output directory exists
-            await fs.mkdir(path.dirname(outputPath), { recursive: true });
+            await mkdir(dirname(outputPath), { recursive: true });
 
             // Write markdown file
-            await fs.writeFile(outputPath, markdown, 'utf-8');
+            await writeFile(outputPath, markdown, 'utf-8');
 
-            console.log(`✓ Converted: ${relativePath} -> ${path.relative(this.outputDir, outputPath)}`);
+            console.log(`✓ Converted: ${relativePath} -> ${relative(this.outputDir, outputPath)}`);
 
         } catch (error) {
-            console.error(`Error processing ${relativePath}:`, error.message);
+            const handledError = ErrorHandler.handle(error, {
+                operation: 'processFile',
+                filePath: relativePath
+            });
+            ErrorHandler.logError(handledError);
+            throw new ConversionError(
+                `Failed to process ${relativePath}`,
+                filePath,
+                relativePath.replace(/\.html?$/i, '.md'),
+                { originalError: handledError }
+            );
         }
     }
 
@@ -227,11 +238,11 @@ converted: "${new Date().toISOString()}"
 
     async findHtmlFiles(dir, baseDir = dir) {
         const files = [];
-        const entries = await fs.readdir(dir, { withFileTypes: true });
+        const entries = await readdir(dir, { withFileTypes: true });
 
         for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name);
-            const relativePath = path.relative(baseDir, fullPath);
+            const fullPath = join(dir, entry.name);
+            const relativePath = relative(baseDir, fullPath);
 
             if (entry.isDirectory()) {
                 // Recursively search subdirectories
@@ -246,14 +257,19 @@ converted: "${new Date().toISOString()}"
     }
 
     async convert() {
-        try {
+        return await PerformanceMonitor.measure('htmlConversion', async () => {
             console.log(`Starting conversion from ${this.inputDir} to ${this.outputDir}`);
 
             // Ensure output directory exists
-            await fs.mkdir(this.outputDir, { recursive: true });
+            await ErrorHandler.wrapAsync(async () => {
+                await mkdir(this.outputDir, { recursive: true });
+            }, { operation: 'createOutputDirectory', path: this.outputDir });
 
             // Find all HTML files
-            const htmlFiles = await this.findHtmlFiles(this.inputDir);
+            const htmlFiles = await ErrorHandler.wrapAsync(async () => {
+                return await this.findHtmlFiles(this.inputDir);
+            }, { operation: 'findHtmlFiles', path: this.inputDir });
+
             console.log(`Found ${htmlFiles.length} HTML files to convert`);
 
             if (htmlFiles.length === 0) {
@@ -263,24 +279,32 @@ converted: "${new Date().toISOString()}"
 
             // Process each file
             let converted = 0;
-            for (const { fullPath, relativePath } of htmlFiles) {
-                await this.processFile(fullPath, relativePath);
-                converted++;
+            const errors = [];
 
-                // Progress indicator
-                if (converted % 10 === 0) {
-                    console.log(`Progress: ${converted}/${htmlFiles.length} files converted`);
+            for (const { fullPath, relativePath } of htmlFiles) {
+                try {
+                    await this.processFile(fullPath, relativePath);
+                    converted++;
+
+                    // Progress indicator
+                    if (converted % 10 === 0) {
+                        console.log(`Progress: ${converted}/${htmlFiles.length} files converted`);
+                    }
+                } catch (error) {
+                    errors.push({ file: relativePath, error });
+                    console.warn(`Skipping ${relativePath}: ${error.message}`);
                 }
             }
 
             console.log(`\n✅ Conversion complete! Converted ${converted} files.`);
+            if (errors.length > 0) {
+                console.warn(`⚠️  ${errors.length} files had errors and were skipped.`);
+            }
             console.log(`Markdown files saved to: ${this.outputDir}`);
 
-        } catch (error) {
-            console.error('Conversion failed:', error);
-            process.exit(1);
-        }
+            return { converted, errors: errors.length, total: htmlFiles.length };
+        });
     }
 }
 
-module.exports = HTMLToMarkdownConverter;
+export default HTMLToMarkdownConverter;

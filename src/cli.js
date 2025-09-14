@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 
-const path = require('path');
-const { Command } = require('commander');
-const { registerAllCommands } = require('./commands');
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Command } from 'commander';
+import { registerAllCommands } from './commands/index.js';
+import { ErrorHandler, AppError } from './lib/errors.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 
 async function main() {
     const program = new Command();
 
     // Set default docs path
-    const defaultDocsPath = path.join(__dirname, '..', 'md');
+    const defaultDocsPath = join(__dirname, '..', 'md');
 
     program
         .name('gm-cli')
@@ -29,9 +34,13 @@ async function main() {
     }
 }
 
-if (require.main === module) {
-    main().catch(error => {
-        console.error('CLI failed:', error);
-        process.exit(1);
-    });
+// ES module equivalent of require.main === module
+if (import.meta.url === `file://${process.argv[1]}`) {
+    try {
+        await main();
+    } catch (error) {
+        const handledError = ErrorHandler.handle(error, { operation: 'main' });
+        ErrorHandler.logError(handledError);
+        process.exit(handledError instanceof AppError ? Math.floor(handledError.statusCode / 100) : 1);
+    }
 }

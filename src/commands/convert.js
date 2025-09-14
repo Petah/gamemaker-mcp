@@ -1,6 +1,10 @@
-const fs = require('fs').promises;
-const path = require('path');
-const HTMLToMarkdownConverter = require('../lib/html-converter.js');
+import { stat } from 'node:fs/promises';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import HTMLToMarkdownConverter from '../lib/html-converter.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class ConvertCommand {
     static register(program) {
@@ -14,8 +18,8 @@ class ConvertCommand {
     }
 
     async execute(input, output, options, globalOptions) {
-        const inputDir = input || path.join(__dirname, '..', '..', 'docs');
-        const outputDir = output || path.join(__dirname, '..', '..', 'md');
+        const inputDir = input || join(__dirname, '..', '..', 'docs');
+        const outputDir = output || join(__dirname, '..', '..', 'md');
 
         if (!input && !output) {
             console.log('Using default directories:');
@@ -25,8 +29,8 @@ class ConvertCommand {
 
         // Validate input directory exists
         try {
-            const stat = await fs.stat(inputDir);
-            if (!stat.isDirectory()) {
+            const statResult = await stat(inputDir);
+            if (!statResult.isDirectory()) {
                 throw new Error('Input path is not a directory');
             }
         } catch (error) {
@@ -39,4 +43,4 @@ class ConvertCommand {
     }
 }
 
-module.exports = ConvertCommand;
+export default ConvertCommand;
