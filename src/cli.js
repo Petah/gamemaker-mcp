@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { JSDOM } = require('jsdom');
 const TurndownService = require('turndown');
+const { Command } = require('commander');
 const DocsIndexer = require('./lib/docs-indexer.js');
 
 class HTMLToMarkdownConverter {
@@ -425,189 +426,138 @@ class GameMakerLookupCLI {
     }
 }
 
-function showHelp() {
-    console.log(`
-GameMaker Language Documentation Tool
-
-Usage:
-  node gm-lookup.js <command> [options]                    (uses ../md as docs path)
-  node gm-lookup.js <docs-path> <command> [options]
-
-Commands:
-  lookup <function>     Look up a specific function
-  search <query>        Search documentation for terms
-  list [pattern]        List all functions (optionally filtered by pattern)
-  categories            Show available categories
-  category <name>       List functions in a specific category
-  file <path>           Get the content of a specific markdown file
-  convert [input] [output]  Convert HTML documentation to Markdown
-  help                  Show this help message
-
-Examples:
-  node gm-lookup.js lookup draw_sprite
-  node gm-lookup.js search "collision detection"
-  node gm-lookup.js list draw
-  node gm-lookup.js categories
-  node gm-lookup.js category Drawing
-  node gm-lookup.js file GameMaker_Language/GML_Reference/Drawing/Sprites_And_Tiles/draw_sprite.md
-  node gm-lookup.js convert                                (uses ../docs -> ../md)
-  node gm-lookup.js convert ./html ./markdown
-
-  # Or with custom path:
-  node gm-lookup.js /path/to/md lookup draw_sprite
-
-Options:
-  --no-examples        Exclude code examples from lookup results
-  --max-results N      Limit search results (default: 5)
-    `);
-}
 
 async function main() {
-    const args = process.argv.slice(2);
+    const program = new Command();
 
     // Set default docs path
     const defaultDocsPath = path.join(__dirname, '..', 'md');
 
-    let docsPath, command;
+    program
+        .name('gm-cli')
+        .description('GameMaker Language Documentation Tool')
+        .version('1.0.0')
+        .option('-p, --path <path>', 'Documentation path', defaultDocsPath);
 
-    if (args.length === 0 || args.includes('help') || args.includes('--help')) {
-        showHelp();
-        return;
+    // Lookup command
+    program
+        .command('lookup <function>')
+        .description('Look up a specific function')
+        .option('--no-examples', 'Exclude code examples from results')
+        .action(async (functionName, options) => {
+            const docsPath = program.opts().path;
+            await validateDocsPath(docsPath);
+            const cli = await initializeCLI(docsPath);
+            await cli.lookupFunction(functionName, !options.noExamples);
+        });
+
+    // Search command
+    program
+        .command('search <query>')
+        .description('Search documentation for terms')
+        .option('-m, --max-results <number>', 'Maximum number of results', '5')
+        .action(async (query, options) => {
+            const docsPath = program.opts().path;
+            await validateDocsPath(docsPath);
+            const cli = await initializeCLI(docsPath);
+            await cli.searchDocs(query, parseInt(options.maxResults));
+        });
+
+    // List command
+    program
+        .command('list [pattern]')
+        .description('List all functions (optionally filtered by pattern)')
+        .action(async (pattern = '') => {
+            const docsPath = program.opts().path;
+            await validateDocsPath(docsPath);
+            const cli = await initializeCLI(docsPath);
+            await cli.listFunctions(pattern);
+        });
+
+    // Categories command
+    program
+        .command('categories')
+        .description('Show available categories')
+        .action(async () => {
+            const docsPath = program.opts().path;
+            await validateDocsPath(docsPath);
+            const cli = await initializeCLI(docsPath);
+            await cli.listCategories();
+        });
+
+    // Category command
+    program
+        .command('category <name>')
+        .description('List functions in a specific category')
+        .action(async (name) => {
+            const docsPath = program.opts().path;
+            await validateDocsPath(docsPath);
+            const cli = await initializeCLI(docsPath);
+            await cli.listFunctionsByCategory(name);
+        });
+
+    // File command
+    program
+        .command('file <path>')
+        .description('Get the content of a specific markdown file')
+        .action(async (filePath) => {
+            const docsPath = program.opts().path;
+            await validateDocsPath(docsPath);
+            const cli = await initializeCLI(docsPath);
+            await cli.getMarkdownFile(filePath);
+        });
+
+    // Convert command
+    program
+        .command('convert [input] [output]')
+        .description('Convert HTML documentation to Markdown')
+        .action(async (input, output) => {
+            const inputDir = input || path.join(__dirname, '..', 'docs');
+            const outputDir = output || path.join(__dirname, '..', 'md');
+
+            if (!input && !output) {
+                console.log('Using default directories:');
+                console.log(`  Input:  ${inputDir}`);
+                console.log(`  Output: ${outputDir}`);
+            }
+
+            // Validate input directory exists
+            try {
+                const stat = await fs.stat(inputDir);
+                if (!stat.isDirectory()) {
+                    throw new Error('Input path is not a directory');
+                }
+            } catch (error) {
+                console.error(`Error: Input directory "${inputDir}" does not exist or is not accessible.`);
+                process.exit(1);
+            }
+
+            const converter = new HTMLToMarkdownConverter(inputDir, outputDir);
+            await converter.convert();
+        });
+
+    // Parse and execute commands
+    try {
+        await program.parseAsync(process.argv);
+    } catch (error) {
+        console.error('Error:', error.message);
+        process.exit(1);
     }
+}
 
-    if (args.length === 1) {
-        // Single argument - treat as command with default path
-        docsPath = defaultDocsPath;
-        command = args[0];
-        console.error(`Using default docs path: ${docsPath}`);
-    } else if (args.length >= 2) {
-        // Check if first argument is a valid path or a command
-        const fs = require('fs').promises;
-        try {
-            await fs.access(args[0]);
-            // First argument is a valid path
-            docsPath = args[0];
-            command = args[1];
-        } catch (error) {
-            // First argument is not a valid path, treat as command with default path
-            docsPath = defaultDocsPath;
-            command = args[0];
-            console.error(`Using default docs path: ${docsPath}`);
-        }
-    }
-
-    const fs = require('fs').promises;
+async function validateDocsPath(docsPath) {
     try {
         await fs.access(docsPath);
     } catch (error) {
         console.error(`Error: Documentation path "${docsPath}" does not exist or is not accessible.`);
         process.exit(1);
     }
+}
 
+async function initializeCLI(docsPath) {
     const docsIndexer = new DocsIndexer(docsPath);
     await docsIndexer.buildIndex();
-    const cli = new GameMakerLookupCLI(docsIndexer);
-
-    try {
-        // Determine the starting index for command arguments
-        let commandArgStart;
-        if (args.length === 1) {
-            commandArgStart = 1;
-        } else if (docsPath === defaultDocsPath) {
-            // Using default path, so command is first arg
-            commandArgStart = 1;
-        } else {
-            // Using custom path, so command is second arg
-            commandArgStart = 2;
-        }
-
-        switch (command) {
-            case 'lookup':
-                if (args.length < commandArgStart + 1) {
-                    console.error('Error: Function name required for lookup');
-                    process.exit(1);
-                }
-                const includeExamples = !args.includes('--no-examples');
-                await cli.lookupFunction(args[commandArgStart], includeExamples);
-                break;
-
-            case 'search':
-                if (args.length < commandArgStart + 1) {
-                    console.error('Error: Search query required');
-                    process.exit(1);
-                }
-                const maxResultsIndex = args.indexOf('--max-results');
-                const maxResults = maxResultsIndex !== -1 && args[maxResultsIndex + 1] ?
-                    parseInt(args[maxResultsIndex + 1]) : 5;
-                await cli.searchDocs(args[commandArgStart], maxResults);
-                break;
-
-            case 'list':
-                const pattern = args[commandArgStart] || '';
-                await cli.listFunctions(pattern);
-                break;
-
-            case 'categories':
-                await cli.listCategories();
-                break;
-
-            case 'category':
-                if (args.length < commandArgStart + 1) {
-                    console.error('Error: Category name required');
-                    process.exit(1);
-                }
-                await cli.listFunctionsByCategory(args[commandArgStart]);
-                break;
-
-            case 'file':
-                if (args.length < commandArgStart + 1) {
-                    console.error('Error: File path required');
-                    process.exit(1);
-                }
-                await cli.getMarkdownFile(args[commandArgStart]);
-                break;
-
-            case 'convert':
-                // Handle convert command separately as it doesn't need docs indexer
-                let inputDir, outputDir;
-
-                if (args.length >= commandArgStart + 2) {
-                    // Custom input/output directories provided
-                    inputDir = args[commandArgStart];
-                    outputDir = args[commandArgStart + 1];
-                } else {
-                    // Use defaults
-                    inputDir = path.join(__dirname, '..', 'docs');
-                    outputDir = path.join(__dirname, '..', 'md');
-                    console.log('Using default directories:');
-                    console.log(`  Input:  ${inputDir}`);
-                    console.log(`  Output: ${outputDir}`);
-                }
-
-                // Validate input directory exists
-                try {
-                    const stat = await fs.stat(inputDir);
-                    if (!stat.isDirectory()) {
-                        throw new Error('Input path is not a directory');
-                    }
-                } catch (error) {
-                    console.error(`Error: Input directory "${inputDir}" does not exist or is not accessible.`);
-                    process.exit(1);
-                }
-
-                const converter = new HTMLToMarkdownConverter(inputDir, outputDir);
-                await converter.convert();
-                break;
-
-            default:
-                console.error(`Error: Unknown command "${command}"`);
-                showHelp();
-                process.exit(1);
-        }
-    } catch (error) {
-        console.error('Error:', error.message);
-        process.exit(1);
-    }
+    return new GameMakerLookupCLI(docsIndexer);
 }
 
 if (require.main === module) {
