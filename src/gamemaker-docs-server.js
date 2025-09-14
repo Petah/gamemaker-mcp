@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
-const path = require('path');
-const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
-const DocsIndexer = require('./lib/docs-indexer.js');
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import DocsIndexer from './lib/docs-indexer.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class GameMakerDocsServer {
     constructor(docsIndexer) {
@@ -282,11 +286,10 @@ class GameMakerDocsServer {
     }
 
     async initGameMakerAgent() {
-        const fs = require('fs').promises;
-        const path = require('path');
+        const { promises: fs } = await import('node:fs');
 
         try {
-            const llmsFilePath = path.join(__dirname, '..', 'init.txt');
+            const llmsFilePath = join(__dirname, '..', 'init.txt');
             const content = await fs.readFile(llmsFilePath, 'utf-8');
 
             return {
@@ -318,7 +321,7 @@ class GameMakerDocsServer {
 
 // Main execution
 async function main() {
-    const docsPath = process.argv[2] || path.join(__dirname, '..', 'md');
+    const docsPath = process.argv[2] || join(__dirname, '..', 'md');
 
     if (!docsPath) {
         console.error('Usage: node gamemaker-docs-server.js [path-to-markdown-docs]');
@@ -326,7 +329,7 @@ async function main() {
         process.exit(1);
     }
 
-    const fs = require('fs').promises;
+    const { promises: fs } = await import('node:fs');
     try {
         await fs.access(docsPath);
     } catch (error) {
@@ -340,7 +343,8 @@ async function main() {
     await server.run();
 }
 
-if (require.main === module) {
+// ES module equivalent of require.main === module
+if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch(error => {
         console.error('Server failed:', error);
         process.exit(1);
