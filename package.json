@@ -1,22 +1,20 @@
 {
   "name": "@petah/gamemaker-mcp",
-  "version": "1.0.2",
+  "version": "1.0.9",
   "description": "GameMaker Language documentation tools with MCP server and CLI - search, lookup, and convert GameMaker documentation",
   "type": "module",
-  "main": "src/gamemaker-docs-server.js",
   "bin": {
-    "gamemaker-mcp": "./src/gamemaker-docs-server.js",
-    "gm-cli": "./src/cli.js",
-    "gm-docs": "./src/cli.js"
+    "gamemaker-mcp": "./src/gamemaker-docs-server.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "start": "node src/gamemaker-docs-server.js",
     "mcp": "node src/gamemaker-docs-server.js",
     "cli": "node src/cli.js",
     "cli:dev": "node --watch src/cli.js",
-    "convert": "node src/cli.js convert",
-    "prepublishOnly": "echo \"Ready to publish @petah/gamemaker-mcp\"",
-    "postpublish": "echo \"Published successfully! Install with: npx @petah/gamemaker-mcp\""
+    "convert": "node src/cli.js convert"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",
@@ -25,7 +23,7 @@
     "turndown": "^7.1.2"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=22.0.0"
   },
   "keywords": [
     "gamemaker",
@@ -43,22 +41,12 @@
     "docs",
     "reference"
   ],
-  "author": "",
   "license": "MIT",
-  "homepage": "#",
-  "repository": {
-    "type": "git",
-    "url": "#"
-  },
-  "bugs": {
-    "url": "#"
-  },
   "files": [
     "src/",
     "md/",
     "init.txt",
     "README.md",
     "LICENSE"
-  ],
-  "preferGlobal": true
+  ]
 }
