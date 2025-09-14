@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 async function main() {
     const program = new Command();
 
-    // Set default docs path
+    // Set default docs path to bundled md directory
     const defaultDocsPath = join(__dirname, '..', 'md');
 
     program

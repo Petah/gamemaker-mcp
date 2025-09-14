@@ -2,6 +2,8 @@
 
 A comprehensive toolkit for GameMaker Language (GML) documentation management, featuring an MCP server, CLI tools, and HTML-to-Markdown conversion utilities.
 
+> **Includes GameMaker Documentation**: This package comes with GameMaker Language documentation built-in. No additional setup or file downloads required!
+
 ## Features
 
 - **MCP Server**: Model Context Protocol server for programmatic documentation access
@@ -15,6 +17,36 @@ A comprehensive toolkit for GameMaker Language (GML) documentation management, f
 - **npm**: Latest version recommended
 
 ## Installation
+
+### Quick Start with npx (Recommended)
+
+No installation needed! Run directly with npx:
+
+```bash
+# Run MCP server
+npx @petah/gamemaker-mcp
+
+# Run CLI tool
+npx @petah/gamemaker-mcp gm-cli --help
+
+# Alternative command names
+npx @petah/gamemaker-mcp gamemaker-mcp  # MCP server
+npx @petah/gamemaker-mcp gm-docs lookup draw_sprite  # CLI tool
+```
+
+### Global Installation
+
+```bash
+# Install globally
+npm install -g @petah/gamemaker-mcp
+
+# Then use directly
+gamemaker-mcp
+gm-cli --help
+gm-docs lookup draw_sprite
+```
+
+### Local Development
 
 ```bash
 # Clone the repository
@@ -32,30 +64,44 @@ npm install
 The CLI provides comprehensive GameMaker documentation lookup and search capabilities:
 
 ```bash
-# Show help
-npm run cli -- --help
+# Using npx (recommended)
+npx @petah/gamemaker-mcp gm-cli --help
+npx @petah/gamemaker-mcp gm-docs lookup draw_sprite
 
+# Alternative npx usage
+npx @petah/gamemaker-mcp gm-cli lookup draw_sprite
+npx @petah/gamemaker-mcp gm-docs search collision
+
+# Global installation
+gm-cli --help
+gm-docs lookup draw_sprite
+
+# All CLI commands work the same way:
 # Look up a specific function
-npm run cli lookup draw_sprite
+gm-docs lookup draw_sprite
 
 # Search documentation
-npm run cli search collision
+gm-docs search collision
 
 # List functions by pattern
-npm run cli list draw
+gm-docs list draw
 
 # Show available categories
-npm run cli categories
+gm-docs categories
 
 # List functions in a category
-npm run cli category Drawing
+gm-docs category Drawing
 
 # Get specific file content
-npm run cli file GameMaker_Language/GML_Reference/Drawing/Sprites_And_Tiles/draw_sprite.md
+gm-docs file GameMaker_Language/GML_Reference/Drawing/Sprites_And_Tiles/draw_sprite.md
 
 # Convert HTML docs to Markdown
-npm run cli convert
-npm run cli convert ./html ./markdown
+gm-docs convert
+gm-docs convert ./html ./markdown
+
+# Local development
+npm run cli -- --help
+npm run cli lookup draw_sprite
 ```
 
 #### Development Mode
@@ -63,16 +109,23 @@ npm run cli convert ./html ./markdown
 Use watch mode for development with automatic reloading:
 
 ```bash
+# Local development only
 npm run cli:dev -- --help
 ```
 
-#### Custom Documentation Path
+#### Custom Documentation Path (Optional)
 
-Specify a custom documentation directory:
+The package includes GameMaker documentation by default. If you need to use custom docs:
 
 ```bash
+# Using npx
+npx @petah/gamemaker-mcp gm-docs --path /path/to/docs lookup draw_sprite
+
+# Global installation
+gm-docs --path /path/to/docs lookup draw_sprite
+
+# Local development
 npm run cli -- --path /path/to/docs lookup draw_sprite
-npm run cli -- --path /path/to/docs search collision --max-results 10
 ```
 
 ### MCP Server
@@ -80,11 +133,22 @@ npm run cli -- --path /path/to/docs search collision --max-results 10
 Start the Model Context Protocol server for programmatic access:
 
 ```bash
-# Start with default documentation path
-npm run mcp
+# Using npx (recommended) - includes built-in GameMaker docs
+npx @petah/gamemaker-mcp
 
-# Start with custom documentation path
-node src/gamemaker-docs-server.js /path/to/docs
+# Or with alternative command
+npx @petah/gamemaker-mcp gamemaker-mcp
+
+# Global installation
+gamemaker-mcp
+gamemaker-docs-server
+
+# Local development
+npm run mcp
+node src/gamemaker-docs-server.js
+
+# Custom documentation path (optional)
+npx @petah/gamemaker-mcp /path/to/custom/docs
 ```
 
 The MCP server provides 5 tools:
@@ -93,6 +157,51 @@ The MCP server provides 5 tools:
 - `list_gamemaker_functions` - List functions by pattern or category
 - `get_gamemaker_file` - Retrieve specific documentation files
 - `init_gamemaker_agent` - Initialize with comprehensive GML coding guide
+
+#### MCP Configuration
+
+For Claude Desktop or other MCP clients, add this to your configuration:
+
+**Claude Desktop (claude_desktop_config.json):**
+```json
+{
+  "mcpServers": {
+    "gamemaker-docs": {
+      "command": "npx",
+      "args": ["@petah/gamemaker-mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+**VS Code (.vscode/settings.json):**
+```json
+{
+  "mcp.servers": {
+    "gamemaker-docs": {
+      "command": "npx",
+      "args": ["@petah/gamemaker-mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
+```
+
+**With custom documentation path (optional):**
+```json
+{
+  "mcpServers": {
+    "gamemaker-docs": {
+      "command": "npx",
+      "args": ["@petah/gamemaker-mcp", "/path/to/your/gamemaker/docs"],
+      "env": {}
+    }
+  }
+}
+```
+
+> **Note**: The package includes GameMaker documentation by default, so no path configuration is needed for standard usage.
 
 ### HTML to Markdown Conversion
 
