@@ -1,14 +1,23 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, writeFile, stat, access } from 'node:fs/promises';
 import { join, relative, basename, sep, isAbsolute, dirname, resolve } from 'node:path';
+import { constants } from 'node:fs';
 
 class DocsIndexer {
     constructor(docsPath) {
         this.docsPath = docsPath;
         this.functionIndex = new Map();
         this.fileContent = new Map();
+        this.cacheFile = join(docsPath, '.docs-index-cache.json');
+        this.cacheValid = false;
     }
 
     async buildIndex() {
+        // Try to load from cache first
+        if (await this.loadFromCache()) {
+            console.error('Loaded documentation index from cache');
+            return;
+        }
+
         console.error('Building documentation index...');
 
         try {
@@ -36,6 +45,9 @@ class DocsIndexer {
             }
 
             console.error(`Index built: ${this.functionIndex.size} unique functions, ${totalFunctions} total references`);
+
+            // Save to cache
+            await this.saveToCache();
         } catch (error) {
             console.error('Error building index:', error.message);
         }
@@ -566,6 +578,72 @@ class DocsIndexer {
 
         const meaningfulParts = pathParts.slice(startIndex);
         return meaningfulParts.join('/');
+    }
+
+    async loadFromCache() {
+        try {
+            // Check if cache file exists
+            await access(this.cacheFile, constants.F_OK);
+
+            // Check if cache is still valid
+            if (!(await this.isCacheValid())) {
+                return false;
+            }
+
+            const cacheData = await readFile(this.cacheFile, 'utf-8');
+            const cache = JSON.parse(cacheData);
+
+            // Restore the Maps from the cache
+            this.functionIndex = new Map(cache.functionIndex);
+            this.fileContent = new Map(cache.fileContent);
+            this.cacheValid = true;
+
+            return true;
+        } catch (error) {
+            // Cache doesn't exist or is invalid
+            return false;
+        }
+    }
+
+    async saveToCache() {
+        try {
+            const cache = {
+                timestamp: Date.now(),
+                functionIndex: Array.from(this.functionIndex.entries()),
+                fileContent: Array.from(this.fileContent.entries())
+            };
+
+            await writeFile(this.cacheFile, JSON.stringify(cache, null, 2), 'utf-8');
+            this.cacheValid = true;
+        } catch (error) {
+            console.error('Failed to save cache:', error.message);
+        }
+    }
+
+    async isCacheValid() {
+        try {
+            const cacheStats = await stat(this.cacheFile);
+            const cacheTime = cacheStats.mtime.getTime();
+
+            // Find all markdown files and check their modification times
+            const files = await this.findMarkdownFiles(this.docsPath);
+
+            for (const filePath of files) {
+                try {
+                    const fileStats = await stat(filePath);
+                    if (fileStats.mtime.getTime() > cacheTime) {
+                        return false; // A file is newer than the cache
+                    }
+                } catch (error) {
+                    // If we can't stat a file, assume cache is invalid
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 }
 
