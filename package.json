@@ -1,6 +1,6 @@
 {
   "name": "@petah/gamemaker-mcp",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "GameMaker Language documentation tools with MCP server and CLI - search, lookup, and convert GameMaker documentation",
   "type": "module",
   "bin": {
@@ -21,9 +21,6 @@
     "commander": "^14.0.1",
     "jsdom": "^22.1.0",
     "turndown": "^7.1.2"
-  },
-  "engines": {
-    "node": ">=22.0.0"
   },
   "keywords": [
     "gamemaker",
